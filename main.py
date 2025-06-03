@@ -143,7 +143,8 @@ async def main_async():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     # Handle photos, documents, and other media
-    application.add_handler(MessageHandler(filters.PHOTO | filters.DOCUMENT, handle_message))
+    application.add_handler(MessageHandler(filters.PHOTO, handle_message))
+    application.add_handler(MessageHandler(filters.Document.ALL, handle_message))
 
     application.add_error_handler(error_handler)
     application.post_init = setup_commands
