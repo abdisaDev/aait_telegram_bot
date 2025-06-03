@@ -3,7 +3,6 @@ import logging
 from typing import Tuple, List, Dict
 from config import OPENROUTER_API_KEY, OPENROUTER_MODEL, SYSTEM_PROMPT, logger
 
-# Dictionary to store conversation history for each chat
 conversation_history: Dict[int, List[Dict[str, str]]] = {}
 
 def test_openrouter_connection() -> bool:
