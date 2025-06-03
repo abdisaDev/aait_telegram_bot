@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from typing import Dict, List, Tuple
+from flask import Flask
+from threading import Thread
 
 load_dotenv()
 
@@ -259,6 +261,26 @@ def main():
         return
     
     test_openrouter_connection()
+    
+    # Create and configure the Flask app
+    app = Flask(__name__)
+    
+    @app.route('/')
+    def index():
+        return "Daddy Telegram Bot is running!"
+    
+    @app.route('/health')
+    def health():
+        return {"status": "healthy", "bot": "running"}
+    
+    # Start Flask in a separate thread
+    def run_flask():
+        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    
+    flask_thread = Thread(target=run_flask)
+    flask_thread.daemon = True  # This ensures the Flask thread will close when the main program exits
+    flask_thread.start()
+    logger.info(f"Flask server started on port {os.environ.get('PORT', 8080)}")
     
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
