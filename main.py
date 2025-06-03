@@ -11,6 +11,7 @@ import nest_asyncio
 from config import TELEGRAM_BOT_TOKEN, OPENROUTER_API_KEY, IS_PRODUCTION, USE_WEBHOOK, WEBHOOK_URL, PORT, logger
 from openrouter_client import test_openrouter_connection
 from bot_handlers import start_command, help_command, clear_command, handle_message
+import bot_handlers
 from web_server import create_server, start_server
 
 nest_asyncio.apply()
@@ -21,6 +22,8 @@ KEEPALIVE_INTERVAL = 30
 MAX_IDLE_TIME = 15 * 60  
 PING_FAILURE_COUNT = 0 
 MAX_PING_FAILURES = 3 
+
+bot_handlers.last_activity_time = last_activity_time
 
 async def setup_commands(app):
     """Set up the bot commands menu"""

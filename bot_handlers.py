@@ -4,16 +4,23 @@ from telegram.ext import ContextTypes
 from config import CUSTOM_MENTIONS, logger
 from openrouter_client import generate_openrouter_response, clear_chat_history
 import time
-import sys
-sys.path.append('.')
-from main import last_activity_time
+
+# We'll update this variable from main.py
+last_activity_time = None
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /start command"""
+    # Update last activity time if it's available
+    global last_activity_time
+    if last_activity_time is not None:
+        last_activity_time = time.time()
     await update.message.reply_text("Hello! I'm Daddy, your witty AI assistant. How can I help you today?")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /help command"""
+    global last_activity_time
+    if last_activity_time is not None:
+        last_activity_time = time.time()
     help_text = (
         "I'm Daddy, your AI assistant. Here's how you can interact with me:\n\n"
         "• Just send me a message and I'll respond\n"
@@ -25,6 +32,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /clear command to reset conversation history"""
+    global last_activity_time
+    if last_activity_time is not None:
+        last_activity_time = time.time()
     chat_id = update.effective_chat.id
     if clear_chat_history(chat_id):
         await update.message.reply_text("Our conversation history has been cleared. What would you like to talk about now?")
@@ -34,9 +44,9 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for regular messages"""
     try:
-        # Update last activity timestamp
         global last_activity_time
-        last_activity_time = time.time()
+        if last_activity_time is not None:
+            last_activity_time = time.time()
         
         if not update.message or not update.message.text:
             return
