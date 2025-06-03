@@ -38,7 +38,7 @@ SYSTEM_PROMPT = (
     "Keep your responses relatively short and engaging."
 )
 
-CUSTOM_MENTIONS = ["@homie", "@daddy", "@bro"]
+CUSTOM_MENTIONS = ["@homie", "@daddy", "@bro", "@abdisaDev", "@abdisadev", "@abdisa"]
 
 def test_openrouter_connection():
     if not OPENROUTER_API_KEY:
