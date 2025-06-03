@@ -3,6 +3,10 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from config import CUSTOM_MENTIONS, logger
 from openrouter_client import generate_openrouter_response, clear_chat_history
+import time
+import sys
+sys.path.append('.')
+from main import last_activity_time
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /start command"""
@@ -30,6 +34,10 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for regular messages"""
     try:
+        # Update last activity timestamp
+        global last_activity_time
+        last_activity_time = time.time()
+        
         if not update.message or not update.message.text:
             return
 

@@ -13,14 +13,14 @@ from openrouter_client import test_openrouter_connection
 from bot_handlers import start_command, help_command, clear_command, handle_message
 from web_server import create_server, start_server
 
-# Apply nest_asyncio to allow nested event loops (helps with webhook mode)
 nest_asyncio.apply()
 
-# Global variable to track bot status
 bot_running = False
 last_activity_time = time.time()
-KEEPALIVE_INTERVAL = 60  # seconds
-MAX_IDLE_TIME = 60 * 60  # 1 hour - adjust based on your hosting provider's timeout
+KEEPALIVE_INTERVAL = 30 
+MAX_IDLE_TIME = 15 * 60  
+PING_FAILURE_COUNT = 0 
+MAX_PING_FAILURES = 3 
 
 async def setup_commands(app):
     """Set up the bot commands menu"""
@@ -33,10 +33,8 @@ async def setup_commands(app):
 
 async def error_handler(update, context):
     """Handle errors in the telegram-python-bot library"""
-    global bot_running
+    global bot_running, last_activity_time
     
-    # Update last activity time
-    global last_activity_time
     last_activity_time = time.time()
     
     if isinstance(context.error, telegram.error.Conflict):
@@ -46,6 +44,15 @@ async def error_handler(update, context):
     
     if isinstance(context.error, telegram.error.NetworkError):
         logger.error(f"Network error: {context.error}. Will continue running.")
+        try:
+            if hasattr(context.application, 'updater') and context.application.updater:
+                logger.info("Attempting to restart polling after network error...")
+                await context.application.updater.stop_polling()
+                await asyncio.sleep(1)
+                await context.application.updater.start_polling()
+                logger.info("Successfully restarted polling")
+        except Exception as e:
+            logger.error(f"Failed to restart polling: {e}")
         return
         
     if isinstance(context.error, telegram.error.TimedOut):
@@ -56,7 +63,7 @@ async def error_handler(update, context):
 
 async def keepalive_ping(application):
     """Send periodic pings to keep the connection alive"""
-    global last_activity_time, bot_running
+    global last_activity_time, bot_running, PING_FAILURE_COUNT
     
     while bot_running:
         try:
@@ -77,9 +84,20 @@ async def keepalive_ping(application):
                 try:
                     await application.bot.get_me()
                     logger.info("Keepalive ping successful")
-                    last_activity_time = current_time  # Reset the timer after successful ping
+                    PING_FAILURE_COUNT = 0  # Reset failure count on success
+                    
+                    # Only reset the timer if we haven't had user activity in a while
+                    if time_since_activity > KEEPALIVE_INTERVAL * 2:
+                        last_activity_time = current_time  # Reset the timer after successful ping
                 except Exception as e:
                     logger.error(f"Keepalive ping failed: {e}")
+                    PING_FAILURE_COUNT += 1
+                    
+                    # If we've had multiple consecutive ping failures, restart the bot
+                    if PING_FAILURE_COUNT >= MAX_PING_FAILURES:
+                        logger.warning(f"Experienced {PING_FAILURE_COUNT} consecutive ping failures. Restarting bot...")
+                        restart_bot()
+                        return
             
             # Sleep for a bit before the next check
             await asyncio.sleep(KEEPALIVE_INTERVAL)
@@ -134,26 +152,21 @@ async def main_async():
 
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
-    # Register handlers for all message types
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("clear", clear_command))
-    
-    # Handle text messages
+
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # Handle photos, documents, and other media
     application.add_handler(MessageHandler(filters.PHOTO, handle_message))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_message))
 
     application.add_error_handler(error_handler)
     application.post_init = setup_commands
     
-    # Set bot as running
     bot_running = True
     last_activity_time = time.time()
     
-    # Start keepalive task
     asyncio.create_task(keepalive_ping(application))
     
     try:
