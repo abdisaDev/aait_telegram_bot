@@ -5,22 +5,23 @@ from config import CUSTOM_MENTIONS, logger
 from openrouter_client import generate_openrouter_response, clear_chat_history
 import time
 
-# We'll update this variable from main.py
-last_activity_time = None
+# This global variable is initialized by main.py and updated here.
+last_activity_time = time.time() # Initialize to current time as a fallback
+
+async def _update_activity_time():
+    """Helper function to update the last activity time and log it."""
+    global last_activity_time
+    last_activity_time = time.time()
+    logger.debug(f"User activity in bot_handlers: last_activity_time updated to {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_activity_time))}")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /start command"""
-    # Update last activity time if it's available
-    global last_activity_time
-    if last_activity_time is not None:
-        last_activity_time = time.time()
+    await _update_activity_time()
     await update.message.reply_text("Hello! I'm Daddy, your witty AI assistant. How can I help you today?")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /help command"""
-    global last_activity_time
-    if last_activity_time is not None:
-        last_activity_time = time.time()
+    await _update_activity_time()
     help_text = (
         "I'm Daddy, your AI assistant. Here's how you can interact with me:\n\n"
         "• Just send me a message and I'll respond\n"
@@ -32,9 +33,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /clear command to reset conversation history"""
-    global last_activity_time
-    if last_activity_time is not None:
-        last_activity_time = time.time()
+    await _update_activity_time()
     chat_id = update.effective_chat.id
     if clear_chat_history(chat_id):
         await update.message.reply_text("Our conversation history has been cleared. What would you like to talk about now?")
@@ -43,16 +42,15 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for regular messages"""
+    await _update_activity_time()
     try:
-        global last_activity_time
-        if last_activity_time is not None:
-            last_activity_time = time.time()
         
-        if not update.message or not update.message.text:
+        if not update.message or (not update.message.text and not update.message.photo and not update.message.document):
+            logger.debug("Received an update without text, photo, or document content. Ignoring.")
             return
 
         chat_id = update.effective_chat.id
-        message_text = update.message.text.strip()
+        message_text = update.message.text.strip() if update.message.text else "" # Handle None text
         user_name = update.effective_user.first_name
 
         is_group = update.effective_chat.type in ["group", "supergroup"]
